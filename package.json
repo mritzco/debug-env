@@ -1,0 +1,32 @@
+{
+  "name": "debug-env",
+  "version": "1.0.0",
+  "description": "Debugger for NodeJS, switches between debug/pino depending on environment. ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mritzco/debug-env.git"
+  },
+  "keywords": [
+    "pino",
+    "debug",
+    "logger",
+    "logging",
+    "logs",
+    "levels",
+    "namespaces"
+  ],
+  "author": "itzco",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mritzco/debug-env/issues"
+  },
+  "homepage": "https://github.com/mritzco/debug-env#readme",
+  "dependencies": {
+    "debug": "^3.1.0",
+    "pino": "^4.17.6"
+  }
+}
