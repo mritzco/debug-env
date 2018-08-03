@@ -12,126 +12,137 @@
  */
 (function() {
   'use strict';
+  // Include libraries and constants
   const namespaces = require('./namespaces'),
-    env = process.env.NODE_ENV || 'development',
-    logLevel = process.env.DEBUG_LEVEL || 'info',
-    forceDebugger = process.env.DEBUGGER || '',
-    defaultDebugger = 'debug',
-    logLevels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'],
-    debuggers = {
-      production: 'pino',
-      development: 'pino',
+    envDebugger = process.env.DEBUGGER || '',
+    logLevels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
+
+  //
+  // Properties that can be overriden
+  //
+  let logger = null;
+
+  let options = {
+    loggers: {
+      production: 'debug',
+      development: 'debug',
       test: 'debug'
-    };
-  let names = {
-    env: process.env.DEBUG || '',
-    enabled: [],
-    disabled: []
+    },
+    level: process.env.DEBUG_LEVEL || 'info',
+    env: process.env.NODE_ENV || 'development',
+    namespaces: process.env.DEBUG || '', // Names defined in environment
+    names: {
+      enabled: [],
+      disabled: []
+    }
   };
 
-  /**
-   * Includes the debugger if exists otherwise default [debug]
-   */
-  let debuggerName = debuggers.hasOwnProperty(env) ? debuggers[env] : defaultDebugger;
-  /**
-   * Allow to set debugger via ENV
-   */
-  if (forceDebugger) {
-    debuggerName = forceDebugger;
+  function init(forceEnv = false) {
+    options.names.env = options.namespaces;
+    options.level_index = logLevels.indexOf(options.level);
+
+    // Verify environment and min level exists
+    if (options.level_index == -1) {
+      throw new Error('[debug-env] Log level not found in allowed levels');
+    }
+
+    if (Object.keys(options.loggers).indexOf(options.env) === -1) {
+      throw new Error('[debug-env] Unknown environment ');
+    }
+
+    let active = forceEnv ? forceEnv : options.loggers[options.env];
+    if (active !== options.active) {
+        options.active = active;
+        logger = null;
+    }
+    //
+    // Parse ENV namespaces for pino
+    //
+    if (options.active === 'pino') {
+      namespaces.parse(options.namespaces);
+    }
   }
-  const logger = require(debuggerName);
+
+  init(envDebugger);
 
   //
   //  Empty function
   //
   function emptyFunction() {}
-
   //
-  //  Check supported levels
+  // Create a silent logger
   //
-  var key = logLevels.indexOf(logLevel);
-
-  if (key == -1) {
-    //  not in allowed levels
-    var msg = '[debug-env] Log level not found in allowed levels';
-    throw new Error(msg);
-  }
-
-  //
-  //  Create a list of allowed levels
-  //
-  var allowedLevels = logLevels.slice(0, key + 1);
-
-  //
-  // Create a blackhole logger
-  //
-  var blackhole = emptyFunction;
+  var silent = emptyFunction;
   for (let i in logLevels) {
-    blackhole[logLevels[i]] = emptyFunction;
-  }
-
-  //
-  // Parse ENV namespaces once (All this should be in a init function so debuggers can be changed)
-  //
-  if (debuggerName === 'pino') {
-    namespaces.parse(names);
+    silent[logLevels[i]] = emptyFunction;
   }
 
   /**
    * Add separate methods for each library
    */
   let bootstrap = {};
-
   // Original method from debug-levels
   bootstrap.debug = function(namespace) {
-    let obj = function() {
-      return logger(namespace).apply(null, arguments);
-    };
+    let obj = emptyFunction;
+    if (options.level_index > 2) {
+      obj = function() {
+        return logger(namespace).apply(null, arguments);
+      };
+    }
+
     for (let i in logLevels) {
-      var logLevel = logLevels[i];
-      var allowedLevel = allowedLevels.indexOf(logLevel) > -1;
-      obj[logLevel] = allowedLevel ? logger(namespace) : emptyFunction;
+      let logLevel = logLevels[i];
+      obj[logLevel] = i <= options.level_index ? logger(namespace) : emptyFunction;
     }
 
     return obj;
   };
   // Bootstrap pino adding
-  bootstrap.pino = function(namespace) {
-    if (namespaces.isEnabled(namespace, names)) {
-      let instance = logger().child({ ns: namespace });
+  bootstrap.pino = function(namespace, opts = {}) {
+    if (namespaces.isEnabled(namespace, options.names)) {
+      //  Pass Pino options
+      opts = { ...opts, ...{ ns: namespace } };
+      let instance = logger().child(opts);
       // If level higher than info, remove all default calls too.
-      let obj =
-        key > 2
-          ? function() {
-              return instance.info.apply(instance, arguments);
-            }
-          : emptyFunction;
-
-      for (let i in logLevels) {
-        var logLevel = logLevels[i];
-        var allowedLevel = allowedLevels.indexOf(logLevel) > -1;
-
-        obj[logLevel] = allowedLevel ? instance[logLevel].bind(instance) : emptyFunction;
+      let obj = emptyFunction;
+      if (options.level_index > 2) {
+        obj = function() {
+          return instance.debug.apply(instance, arguments);
+        };
       }
 
+      for (let i in logLevels) {
+        let logLevel = logLevels[i];
+        obj[logLevel] = i <= options.level_index ? instance[logLevel].bind(instance) : emptyFunction;
+      }
       return obj;
     } else {
-      return blackhole;
+      return silent;
     }
   };
 
-  bootstrap.test = bootstrap.development;
+  // bootstrap.test = bootstrap.development;
   /**
    * Create Debug-level supported debug
    *
    */
-  module.exports = function(namespace) {
-    // console.log('[debug-env start]', env, namespace);
-    return bootstrap[debuggerName](namespace);
+  module.exports = function(namespace, opts) {
+    if (!logger) {
+      logger = require(options.active);
+      module.exports.logger = logger;
+    }
+    return bootstrap[options.active](namespace, opts);
   };
 
   //
   //  Export available levels
   //
   module.exports.levels = logLevels;
+  // Export underlying library
+  module.exports.logger = logger;
+  // Allow custom overriding with code
+  module.exports.force = function force(opts) {
+    options = { ...options, ...opts };
+    init();
+  };
 })();
