@@ -55,11 +55,12 @@
         options.active = active;
         logger = null;
     }
+
     //
     // Parse ENV namespaces for pino
     //
     if (options.active === 'pino') {
-      namespaces.parse(options.namespaces);
+      namespaces.parse(options.names);
     }
   }
 
@@ -143,6 +144,7 @@
   // Allow custom overriding with code
   module.exports.force = function force(opts) {
     options = { ...options, ...opts };
+    options.names.env = options.namespaces
     init();
   };
 })();

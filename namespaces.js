@@ -7,7 +7,9 @@
 let namespaces = {};
 // Split
 namespaces.parse = function(names) {
-  if (!names.env) return;
+  if (!names.hasOwnProperty('env')  || names.env === '') {
+      return;
+  }
   let tmp = names.env.split(',').map(i => i.trim());
   names.enabled = tmp.filter(i => !i.startsWith('-'));
   names.disabled = tmp.filter(i => i.startsWith('-')).map(i => i.substring(1));
