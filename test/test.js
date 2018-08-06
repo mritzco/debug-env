@@ -31,7 +31,7 @@ describe('debug-env', function() {
         },
         level: 'warn',
         env: 'development',
-        namespaces: 'test.msg'
+        namespaces: 'test:msg'
       };
       test.force(options);
       process.env.DEBUG = 'test:msg';
