@@ -3,10 +3,12 @@ A wrapper for switching logging libraries depending on environment.
 
 Works like a drop in place replacement of [Debug](https://github.com/visionmedia/debug) but uses  [Pino](https://npm.im/pino) in production environment.
 
-- Can use just like debug
+Debug-env:
+
+- Can be used just like debug
 - Adds levels to [Debug](https://github.com/visionmedia/debug)
 - Adds namespaces to [Pino](https://npm.im/pino)
-- Swaps between them depending on `NODE_ENV` var
+- Swaps between them depending on `NODE_ENV` or `DEBUGGER` var
 - Adds a silent logger
 - Can be configured via code.
 
@@ -25,6 +27,7 @@ debug("Default behaviour"); // level debug
 
 // Calling it with levels
 debug.warn("You want to look at this at runtime");
+debug.trace("SQL for something", sql); // You don't want to see this often
 
 // Check available levels (Same as in Pino)
 console.log(require('debug-env').levels);
@@ -34,9 +37,12 @@ console.log(require('debug-env').levels);
 
 ## Displaying debug info
 Works by reading the following environment variables:
-- `DEBUG`: namespace (from [Debug](https://github.com/visionmedia/debug))
+- `DEBUG` or `NS`: namespace (from [Debug](https://github.com/visionmedia/debug))*
 - `DEBUG_LEVEL`: (default level: debug)  (from  [Pino](https://github.com/pinojs/pino/blob/master/docs/API.md))
 - `DEBUGGER`: Force overrides debugger to use
+
+\* Many packages use [Debug](https://github.com/visionmedia/debug), if you activate DEBUG=* all packages will log directly. If you have that issue use `NS` instead.
+
 
 Example:
 ```
@@ -60,13 +66,17 @@ let options = {
 debug.force(options);
 process.env.DEBUG = 'test:msg'; // we don't override the real var in the package
 debug = test('test:msg');
+
+// Or force a debbuger from the command line
+DEBUGGER=pino npm start
+
 ```
 
 ## Using in production mode
 In production mode the logger is changed to [Pino](https://npm.im/pino) without you making any changes to the code.
 Namespaces are added to the output as `ns` property. You can use Pino transports and other external libraries as usual.
 
-Using pm2 to execute and control the log rotation.
+Example Using pm2 to execute and control the log rotation.
 [Check pm2 ecosystem](https://pm2.io/doc/en/runtime/guide/ecosystem-file/) file.
 
 pm2 ecosystem.conf.js
@@ -106,14 +116,13 @@ Debug actually returns debug, and it's also available under the logger property.
 
 ```
 // Example taken and adapted from Debug site
+
 const createDebug = require('debug-env');
-createDebug.formatters.h = (v) => {
+createDebug.logger.debug.formatters.h = (v) => {
   return v.toString('hex');
 }
 const debug = createDebug('foo');
 
-// You can also access debug
-createDebug.logger
 ```
 
 #### Example with Pino
