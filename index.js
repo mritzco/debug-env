@@ -17,59 +17,42 @@
     envDebugger = process.env.DEBUGGER || '',
     logLevels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
 
-  //
-  // Properties that can be overriden
-  //
-  let logger = null;
+    /**
+     * Add separate methods for each library
+     */
+  const bootstrap = {};
 
+  let logger = {
+      debug: require('debug'),
+      silent: silent
+  };
+  // Use debug-levels to log the messages itself
+  let ownDebug;
+
+  //
+  // Options from command. Can be overriden by using .force(opts)
+  //
   let options = {
     loggers: {
-      production: 'debug',
+      production: 'pino',
       development: 'debug',
-      test: 'debug'
+      test: 'silent'
     },
     level: process.env.DEBUG_LEVEL || 'info',
     env: process.env.NODE_ENV || 'development',
-    namespaces: process.env.DEBUG || '', // Names defined in environment
+    namespaces: process.env.DEBUG ||  process.env.NS ||'', // Names defined in environment
     names: {
       enabled: [],
       disabled: []
     }
   };
 
-  function init(forceEnv = false) {
-    options.names.env = options.namespaces;
-    options.level_index = logLevels.indexOf(options.level);
-
-    // Verify environment and min level exists
-    if (options.level_index == -1) {
-      throw new Error('[debug-env] Log level not found in allowed levels');
-    }
-
-    if (Object.keys(options.loggers).indexOf(options.env) === -1) {
-      throw new Error('[debug-env] Unknown environment ');
-    }
-
-    let active = forceEnv ? forceEnv : options.loggers[options.env];
-    if (active !== options.active) {
-        options.active = active;
-        logger = null;
-    }
-
-    //
-    // Parse ENV namespaces for pino
-    //
-    if (options.active === 'pino') {
-      namespaces.parse(options.names);
-    }
-  }
-
-  init(envDebugger);
 
   //
   //  Empty function
   //
   function emptyFunction() {}
+
   //
   // Create a silent logger
   //
@@ -78,22 +61,21 @@
     silent[logLevels[i]] = emptyFunction;
   }
 
-  /**
-   * Add separate methods for each library
-   */
-  let bootstrap = {};
+
   // Original method from debug-levels
   bootstrap.debug = function(namespace) {
     let obj = emptyFunction;
     if (options.level_index > 2) {
       obj = function() {
-        return logger(namespace).apply(null, arguments);
+        return logger.debug(namespace).apply(null, arguments);
       };
     }
 
+    let thelogger = logger.debug(namespace);
     for (let i in logLevels) {
       let logLevel = logLevels[i];
-      obj[logLevel] = i <= options.level_index ? logger(namespace) : emptyFunction;
+      obj[logLevel] = i <= options.level_index ?  thelogger: emptyFunction;
+
     }
 
     return obj;
@@ -103,7 +85,7 @@
     if (namespaces.isEnabled(namespace, options.names)) {
       //  Pass Pino options
       opts = { ...opts, ...{ ns: namespace } };
-      let instance = logger().child(opts);
+      let instance = logger.pino().child(opts);
       // If level higher than info, remove all default calls too.
       let obj = emptyFunction;
       if (options.level_index > 2) {
@@ -121,17 +103,56 @@
       return silent;
     }
   };
+  bootstrap.silent = function() {
+      return silent;
+  }
 
-  // bootstrap.test = bootstrap.development;
+  function init(forceEnv = false) {
+
+    options.names.env = options.namespaces;
+    options.level_index = logLevels.indexOf(options.level);
+
+    // Verify environment and min level exists
+    if (options.level_index == -1) {
+      throw new Error('[debug-env] Log level not found in allowed levels');
+    }
+
+    if (Object.keys(options.loggers).indexOf(options.env) === -1) {
+      throw new Error('[debug-env] Unknown environment ');
+    }
+
+    let active = forceEnv ? forceEnv : options.loggers[options.env];
+    // if (active !== options.active) {
+        options.active = active;
+        // logger = null;
+    // }
+
+    //
+    // Parse ENV namespaces for pino
+    //
+    if (options.active === 'pino') {
+      namespaces.parse(options.names);
+    }
+
+    // Add support for debug in the same library
+    ownDebug = bootstrap[options.active]('debug-env');
+
+  }
+
+  init(envDebugger);
+
   /**
    * Create Debug-level supported debug
    *
    */
-  module.exports = function(namespace, opts) {
-    if (!logger) {
-      logger = require(options.active);
-      module.exports.logger = logger;
+  module.exports = function factory(namespace, opts) {
+
+    if (!logger.hasOwnProperty(options.active)) {
+      logger[options.active] = require(options.active);
     }
+
+    ownDebug.trace("[debug-env] create", {namespace, env: options.env, level: options.level, debugger: options.active});
+
     return bootstrap[options.active](namespace, opts);
   };
 
