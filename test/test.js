@@ -68,7 +68,7 @@ describe('debug-env', function() {
       var res = ['debug', 'debug', 'debug', 'emptyFunction', 'emptyFunction', 'emptyFunction'];
       levels.forEach(function(item, i) {
         assert.equal(fnName(debug[item]), res[i]);
-      }); 
+      });
     });
   });
   describe('Namespaces', function() {
