@@ -18,6 +18,7 @@ namespaces.match = function(ns, namelist) {
   for (let i = 0; i < namelist.length; i++) {
     // use for to exit asap
     let entry = namelist[i];
+    if (entry === '*') return true;
     // Try absolute matching ~ maybe faster?
     if (entry === ns) {
       return true;
@@ -37,6 +38,10 @@ namespaces.match = function(ns, namelist) {
  namespaces.isEnabled =function(ns,names) {
   if (names.env === '') return false; // Not set ignore everything
   if (names.env === '*') return true; // Use all
+  // Prevent errors when non itialized
+  if (names.enabled.length ===0 && names.disabled.length ===0) {
+      namespaces.parse(names);
+  }
   // Try matching
   return namespaces.match(ns, names.enabled) && !namespaces.match(ns, names.disabled);
 }
