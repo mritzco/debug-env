@@ -15,7 +15,8 @@
   // Include libraries and constants
   const namespaces = require('./namespaces'),
     envDebugger = process.env.DEBUGGER || '',
-    logLevels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
+    logLevels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'],
+    defLevel = logLevels.indexOf('debug');// this library defaults to debug.debug
 
   /**
    * Add separate methods for each library
@@ -24,10 +25,12 @@
 
   let logger = {
     debug: require('debug'),
-    silent: silent
+    silent: silent,
+    pino: require('pino')()
   };
+  logger.pino.level = 'trace';
   // Use debug-levels to log the messages itself
-  let ownDebug;
+  let _debug;
 
   //
   // Options from command. Can be overriden by using .force(opts)
@@ -38,7 +41,7 @@
       development: 'debug',
       test: 'silent'
     },
-    level: process.env.DEBUG_LEVEL || 'info',
+    level: process.env.DEBUG_LEVEL || 'debug',
     env: process.env.NODE_ENV || 'development',
     namespaces: process.env.DEBUG || process.env.NS || '', // Names defined in environment
     names: {
@@ -63,7 +66,7 @@
   // Original method from debug-levels
   bootstrap.debug = function(namespace) {
     let obj = emptyFunction;
-    if (options.level_index > 2) {
+    if (options.level_index  >= defLevel) {
       obj = function() {
         return logger.debug(namespace).apply(null, arguments);
       };
@@ -77,25 +80,22 @@
 
     return obj;
   };
-  // Bootstrap pino adding
+  // Bootstrap pino adding - maybe can cache this...
   bootstrap.pino = function(namespace, opts = {}) {
     if (namespaces.isEnabled(namespace, options.names)) {
-      if (!logger.hasOwnProperty('pino')) {
-        logger.pino = require('pino')(opts);
-      }
-      //  Pass Pino options
+
       opts = { ...opts, ...{ ns: namespace } };
       let instance = logger.pino.child(opts);
-      // If level higher than info, remove all default calls too.
-      let obj = emptyFunction;
-      if (options.level_index > 2) {
-        obj = function() {
-          return instance.debug.apply(instance, arguments);
-        };
+
+      let obj = emptyFunction; // Assign for default level
+
+      if (options.level_index >= defLevel) {
+        obj = instance.debug.bind(instance);
       }
 
       for (let i in logLevels) {
         let logLevel = logLevels[i];
+    
         obj[logLevel] = i <= options.level_index ? instance[logLevel].bind(instance) : emptyFunction;
       }
       return obj;
@@ -119,18 +119,14 @@
     if (Object.keys(options.loggers).indexOf(options.env) === -1) {
       throw new Error('[debug-env] Unknown environment ');
     }
+    if (logLevels.indexOf(options.level) === -1) {
+      throw new Error('[debug-env] Unknown level');
+    }
 
     options.active = forceEnv ? forceEnv : options.loggers[options.env];
 
-    //
-    // Parse ENV namespaces for pino
-    //
-    if (options.active === 'pino') {
-      namespaces.parse(options.names);
-    }
-
-    // Add support for debug in the same library
-    ownDebug = bootstrap[options.active]('debug-env');
+    // Add support for debug within
+    _debug = bootstrap[options.active]('debug-env');
   }
 
   init(envDebugger);
@@ -140,7 +136,12 @@
    *
    */
   module.exports = function factory(namespace, opts) {
-    ownDebug.trace("[debug-env] create", {namespace, env: options.env, level: options.level, debugger: options.active});
+    _debug.trace('[debug-env] create', {
+      namespace,
+      env: options.env,
+      level: options.level,
+      debugger: options.active
+    });
 
     return bootstrap[options.active](namespace, opts);
   };

@@ -1,8 +1,6 @@
 let test = require('../index'),
-    chai = require('chai')
-    assert = chai.assert,
-    sinon =require('sinon'),
-    sinonChai =require('sinon-chai');
+  chai = require('chai');
+(assert = chai.assert), (sinon = require('sinon')), (sinonChai = require('sinon-chai'));
 
 chai.use(sinonChai);
 
@@ -16,17 +14,13 @@ describe('debug-env', function() {
     it('returns a factory function', function() {
       assert.typeOf(test, 'function');
     });
-    it('pino not available until required', function() {
-      assert.notProperty(test.logger, 'pino');
-      // assert.typeOf(test.logger, 'null');
-    });
+
     it('exports force', function() {
       assert.typeOf(test.force, 'function');
       assert.equal('force', fnName(test.force));
     });
   });
   describe('debug levels', function() {
-    // describe('pino levels', function() {
     let debug = null;
     let levels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
     before(function() {
@@ -50,7 +44,7 @@ describe('debug-env', function() {
     });
     it('internal loggers exposed', function() {
       assert.isObject(test.logger);
-      assert.hasAllKeys(test.logger, ['debug', 'silent']);
+      assert.hasAllKeys(test.logger, ['debug', 'silent', 'pino']);
       // pino is loaded only on request
     });
     it('returns available levels', function() {
@@ -111,22 +105,135 @@ describe('debug-env', function() {
     });
   });
   describe('advanced debug', function() {
-      let activeLog;
-      before(function() {
-          test = require('../index');
-          test.logger.debug.formatters.h = v => {
-            return v.toString('hex');
-          };
-          activeLog = test('test:msg');
-          var spy = sinon.spy(test.logger.debug, "log");
-
-      });
+    let activeLog;
+    before(function() {
+      test = require('../index');
+      test.logger.debug.formatters.h = v => {
+        return v.toString('hex');
+      };
+      activeLog = test('test:msg');
+      var spy = sinon.spy(test.logger.debug, 'log');
+    });
     it('allow formatters', function() {
       activeLog.warn('Ignore this hex: %h', new Buffer('hello world'));
-      assert.include(test.logger.debug.log.getCall(0).args[0], "68656c6c6f20776f726c64");
+      assert.include(test.logger.debug.log.getCall(0).args[0], '68656c6c6f20776f726c64');
     });
     after(function() {
-        test.logger.debug.log.restore();
+      test.logger.debug.log.restore();
+    });
+  });
+
+  describe('pino', function() {
+    // describe('pino levels', function() {
+    let debug = null;
+    let levels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
+    before(function() {
+      var options = {
+        loggers: {
+          development: 'pino'
+        },
+        level: 'warn',
+        env: 'development',
+        namespaces: 'debug-env:*,test:msg'
+      };
+      process.env.DEBUG = 'test:msg';
+      test.force(options);
+      debug = test('test:msg');
+    });
+
+    it('returns a factory', function() {
+      assert.equal(fnName(test), 'factory');
+    });
+    it('internal loggers exposed', function() {
+      assert.isObject(test.logger);
+      assert.hasAllKeys(test.logger, ['debug', 'silent', 'pino']);
+      // pino is loaded only on request
+    });
+    it('returns available levels', function() {
+      assert.deepEqual(levels, test.levels);
+    });
+    it('returns force function', function() {
+      assert.isFunction(test.force);
+    });
+    it('All levels exists', function() {
+      levels.forEach(function(item) {
+        assert.isFunction(debug[item]);
+      });
+    });
+
+    it('default level exists', function() {
+      console.log('[debugxx]', debug);
+    });
+  });
+
+  let levels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
+
+  levels.forEach(function(loopLevel, idx) {
+    let options = {
+      loggers: {
+        development: 'pino'
+      },
+      level: '',
+      env: 'development',
+      namespaces: 'debug-env:*,test:msg'
+    };
+    describe('pino correct level at ' + loopLevel, function() {
+      let debug = null;
+      before(function() {
+        process.env.DEBUG = options.namespaces;
+        options.level = loopLevel;
+        test.force(options);
+        debug = test('test:msg');
+      });
+
+      it('default logger is correctly set', function() {
+        let expected = idx < levels.indexOf('debug') ? 'emptyFunction' : '';
+        assert.isFunction(debug);
+        assert.equal(fnName(debug), expected);
+        // pino is loaded only on request
+      });
+      it('Levels are set correctyle ', function() {
+        // console.log("[LEVEL]",idx, loopLevel);
+        levels.forEach(function(item, i) {
+          let expected = idx < i ? 'emptyFunction' : '';
+          // console.log(" [-] loop: %s(%s) vs innerloop: %s(%s)  ~ %s", loopLevel, idx,item, i, expected);
+          // console.log("[debug.item]",debug[item].toString().substring(0,100));
+          assert.equal(fnName(debug[item]), expected);
+        });
+      });
+    });
+    describe('debug levels', function() {
+      let options = {
+        loggers: {
+          development: 'debug'
+        },
+        level: '',
+        env: 'development',
+        namespaces: 'debug-env:*,test:msg'
+      };
+      let debug = null;
+
+      before(function() {
+        process.env.DEBUG = options.namespaces;
+        options.level = loopLevel;
+        test.force(options);
+        debug = test('test:msg');
+      });
+
+      it('default logger is correctly set', function() {
+        let expected = idx < levels.indexOf('debug') ? 'emptyFunction' : '';
+        assert.isFunction(debug);
+        assert.equal(fnName(debug), expected);
+        // pino is loaded only on request
+      });
+      it('Levels are set correctyle ', function() {
+        // console.log("[LEVEL]",idx, loopLevel);
+        levels.forEach(function(item, i) {
+          let expected = idx < i ? 'emptyFunction' : 'debug';
+          assert.isFunction(debug[item]);
+          assert.equal(fnName(debug[item]), expected);
+        });
+      });
     });
   });
 });
