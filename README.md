@@ -13,7 +13,7 @@ Debug-env:
 - Can be configured via code.
 
 # Installation
-```
+```sh   
  npm install debug-env --save
  ```
 
@@ -21,7 +21,7 @@ Debug-env:
  You can use exactly like [Debug](https://github.com/visionmedia/debug). Once you want to separate messages by level just call by method.
 
  Example:
-```
+```node
 const debug = require('debug-env')('namespace:namespace');
 debug("Default behaviour"); // level debug
 
@@ -45,13 +45,13 @@ Works by reading the following environment variables:
 
 
 Example:
-```
+```sh
 DEBUG=myapp:* DEBUG_LEVEL=debug npm start
 ```
 
 ## Changing the debugger / other options
 You can change nearly all configuration using `force`:
-```
+```node
 let debug =  require('debug-env');
 let options = {
   loggers: {
@@ -80,7 +80,7 @@ Example Using pm2 to execute and control the log rotation.
 [Check pm2 ecosystem](https://pm2.io/doc/en/runtime/guide/ecosystem-file/) file.
 
 pm2 ecosystem.conf.js
-```
+```node
 module.exports = {
   apps : [{
     name      : 'myapp',
@@ -103,7 +103,7 @@ module.exports = {
 ## Advanced use
 
 It is possible to use libraries specific functionality but it will break compatibility. So you need to do it conditionally.
-```
+```node
 if (process.env.NODE_ENV === 'production') {
     // do stuff for PINO
 } else {
@@ -114,7 +114,7 @@ if (process.env.NODE_ENV === 'production') {
 #### Example with debug
 Debug actually returns debug, and it's also available under the logger property.
 
-```
+```node
 // Example taken and adapted from Debug site
 
 const createDebug = require('debug-env');
@@ -127,7 +127,7 @@ const debug = createDebug('foo');
 
 #### Example with Pino
 Pino receives parameters as an object when creating loggers. Pass this object as a second parameter after namespace and it will be directly passed to pino.
-```
+```node
 // Example from pino-noir
 var pino = require('pino')({
   serializers: redaction
