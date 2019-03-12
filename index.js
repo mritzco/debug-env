@@ -77,7 +77,9 @@
       let logLevel = logLevels[i];
       obj[logLevel] = i <= options.level_index ? thelogger : emptyFunction;
     }
-
+    obj.enabled = logger.debug.enabled; // Test this for process not chatched error
+    // add force
+    obj.force = (!obj.enabled ? console.log : thelogger); // test
     return obj;
   };
   // Bootstrap pino adding - maybe can cache this...
@@ -95,11 +97,15 @@
 
       for (let i in logLevels) {
         let logLevel = logLevels[i];
-    
+
         obj[logLevel] = i <= options.level_index ? instance[logLevel].bind(instance) : emptyFunction;
       }
+
       return obj;
     } else {
+     // add force method
+     // silent.force = console.log
+     // return {...silent, force: console.log}
       return silent;
     }
   };
