@@ -95,7 +95,7 @@
 
       for (let i in logLevels) {
         let logLevel = logLevels[i];
-    
+
         obj[logLevel] = i <= options.level_index ? instance[logLevel].bind(instance) : emptyFunction;
       }
       return obj;
@@ -115,9 +115,10 @@
     if (options.level_index == -1) {
       throw new Error('[debug-env] Log level not found in allowed levels');
     }
-
+    // Use debug on unknown environments
     if (Object.keys(options.loggers).indexOf(options.env) === -1) {
-      throw new Error('[debug-env] Unknown environment ');
+      // ('[debug-env] Unknown environment ');
+      forceEnv = 'debug';
     }
     if (logLevels.indexOf(options.level) === -1) {
       throw new Error('[debug-env] Unknown level');
