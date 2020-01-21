@@ -117,7 +117,7 @@
     }
     // Use debug on unknown environments
     if (Object.keys(options.loggers).indexOf(options.env) === -1) {
-      // ('[debug-env] Unknown environment ');
+      // throw new Error('[debug-env] Unknown environment ');
       forceEnv = 'debug';
     }
     if (logLevels.indexOf(options.level) === -1) {

@@ -221,13 +221,12 @@ describe('debug-env', function() {
       });
 
       it('default logger is correctly set', function() {
-        let expected = idx < levels.indexOf('debug') ? 'emptyFunction' : '';
+        let expected = idx < levels.indexOf('debug') ? 'emptyFunction' : '(';
         assert.isFunction(debug);
         assert.equal(fnName(debug), expected);
         // pino is loaded only on request
       });
       it('Levels are set correctyle ', function() {
-        // console.log("[LEVEL]",idx, loopLevel);
         levels.forEach(function(item, i) {
           let expected = idx < i ? 'emptyFunction' : 'debug';
           assert.isFunction(debug[item]);
