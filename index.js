@@ -116,7 +116,7 @@
       throw new Error('[debug-env] Log level not found in allowed levels');
     }
     // Use debug on unknown environments
-    if (Object.keys(options.loggers).indexOf(options.env) === -1) {
+    if (!forceEnv && Object.keys(options.loggers).indexOf(options.env) === -1) {
       // throw new Error('[debug-env] Unknown environment ');
       forceEnv = 'debug';
     }
